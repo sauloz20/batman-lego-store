@@ -32,9 +32,18 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 254 || !is_st
     respond(422, ['message' => 'Informe um e-mail válido e uma senha.']);
 }
 try {
+    $options = [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_EMULATE_PREPARES => false];
+    $ca = getenv('BATMAN_DB_CA_PATH');
+    if ($ca) {
+        if (!is_readable($ca)) {
+            respond(503, ['message' => 'Certificado do banco indisponível.']);
+        }
+        $options[PDO::MYSQL_ATTR_SSL_CA] = $ca;
+        $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = true;
+    }
     $db = new PDO(getenv('BATMAN_DB_DSN') ?: 'mysql:host=127.0.0.1;dbname=batman_store;charset=utf8mb4',
         getenv('BATMAN_DB_USER') ?: 'root', getenv('BATMAN_DB_PASSWORD') ?: '',
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_EMULATE_PREPARES => false]);
+        $options);
     if ($action === 'register') {
         $name = is_string($data['nome'] ?? null) ? trim($data['nome']) : '';
         if ($name === '' || preg_match('/^.{1,120}$/usD', $name) !== 1 || strlen($password) < 8 || strlen($password) > 72 || strpos($password, chr(0)) !== false) {
